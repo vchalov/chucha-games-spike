@@ -1,0 +1,122 @@
+<!doctype html>
+<!-- SPIKE (throwaway, .scratch). Issue #33. Run: npx vite --root .scratch/games-spike --port 5201 -->
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Спайк: голосовые игры</title>
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #10222b;
+        color: #e8f2f5;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        padding: 16px;
+        align-items: flex-start;
+      }
+      #stage { flex: 1 1 640px; min-width: 320px; }
+      canvas {
+        width: 100%;
+        max-width: 960px;
+        aspect-ratio: 16 / 9;
+        border-radius: 12px;
+        background: #0c1a21;
+        display: block;
+      }
+      #hud { display: flex; align-items: center; gap: 12px; font-size: 13px; margin-top: 10px; flex-wrap: wrap; }
+      #meter { width: 160px; height: 12px; background: #223; border-radius: 6px; overflow: hidden; }
+      #meter > div { height: 100%; width: 0%; background: #6bd06b; }
+      #voiced { width: 12px; height: 12px; border-radius: 50%; background: #444; display: inline-block; }
+      #voiced.on { background: #6bd06b; }
+      #panel {
+        flex: 0 1 300px;
+        min-width: 260px;
+        background: #16303b;
+        border-radius: 12px;
+        padding: 14px 16px;
+        font-size: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      #panel h2 { font-size: 13px; margin: 0; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.06em; }
+      .row { display: flex; flex-direction: column; gap: 4px; }
+      .row label { display: flex; justify-content: space-between; gap: 8px; }
+      .tabs { display: flex; gap: 6px; }
+      .tabs button { flex: 1; }
+      button {
+        font-size: 14px; padding: 7px 12px; border-radius: 8px; border: 0; cursor: pointer;
+        background: #2b5566; color: #e8f2f5;
+      }
+      button.active { background: #6bd06b; color: #10222b; }
+      button:disabled { opacity: 0.4; cursor: default; }
+      select, input[type=range] { width: 100%; }
+      .hint { font-size: 12px; opacity: 0.7; line-height: 1.4; }
+      .scene-only { display: none; }
+      .scene-only.visible { display: flex; }
+    </style>
+    <script type="module" crossorigin src="/chucha-games-spike/assets/index-B-ln9hzT.js"></script>
+  </head>
+  <body>
+    <div id="stage">
+      <canvas id="game" width="960" height="540"></canvas>
+      <div id="hud">
+        <button id="mic">Включить микрофон</button>
+        <span id="voiced" title="детектор: голос"></span>
+        <div id="meter" title="нормированная громкость"><div id="meter-fill"></div></div>
+        <span id="f0"></span>
+        <span id="cal" class="hint"></span>
+        <span id="source" class="hint">источник: клавиатура</span>
+      </div>
+      <p class="hint">
+        Без микрофона: удерживайте <b>ПРОБЕЛ</b> — синтетическая «гласная» идёт через тот же анализатор.
+        Клавиши <b>1 / 2 / 3</b> — тихо / средне / громко. Ничего не записывается.
+      </p>
+    </div>
+
+    <div id="panel">
+      <h2>Игра</h2>
+      <div class="tabs" id="scene-tabs">
+        <button data-scene="crossing">Переправа</button>
+        <button data-scene="altitude">Высота</button>
+        <button data-scene="flappy">Флаппи</button>
+      </div>
+      <div class="row">
+        <label>Персонаж <select id="skin"></select></label>
+      </div>
+
+      <h2>Режим</h2>
+      <div class="tabs" id="mode-tabs">
+        <button data-mode="free">Свободная игра</button>
+        <button data-mode="reward">Награда: ход</button>
+      </div>
+      <button id="turn" disabled>Засчитать (один ход)</button>
+      <p class="hint" id="mode-hint"></p>
+
+      <h2>Настройки взрослого</h2>
+      <div class="row">
+        <label><span>Фоновое движение</span><input type="checkbox" id="ambient" checked /></label>
+      </div>
+      <div class="row">
+        <label><span>Чувствительность</span><span id="sens-val"></span></label>
+        <input type="range" id="sens" min="0" max="100" value="50" />
+      </div>
+      <div class="row scene-only" data-for="crossing">
+        <label><span>Время переправы, с</span><span id="cross-val"></span></label>
+        <input type="range" id="cross" min="2" max="8" step="0.5" value="4" />
+      </div>
+      <div class="row scene-only" data-for="flappy">
+        <label><span>Повторять взмах, пока звук длится</span><input type="checkbox" id="hold" /></label>
+      </div>
+      <button id="reset">Сбросить сцену</button>
+      <p class="hint">
+        Экран не подсказывает: пока ребёнок молчит, персонаж стоит. Фоновое движение — постоянное и
+        тихое, оно не усиливается в тишине. Звука нет.
+      </p>
+    </div>
+  </body>
+</html>
