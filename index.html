@@ -1,10 +1,10 @@
 <!doctype html>
-<!-- SPIKE (throwaway, .scratch). Issue #33. Run: npx vite --root .scratch/games-spike --port 5201 -->
+<!-- SPIKE (throwaway, .scratch). Issues #33 (voice) and #55 (motion). Run: npx vite --root .scratch/games-spike --port 5201 -->
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Спайк: голосовые игры</title>
+    <title>Спайк: голосовые игры и игры с движением</title>
     <style>
       :root { color-scheme: dark; }
       body {
@@ -19,7 +19,7 @@
         align-items: flex-start;
       }
       #stage { flex: 1 1 640px; min-width: 320px; }
-      canvas {
+      canvas#game {
         width: 100%;
         max-width: 960px;
         aspect-ratio: 16 / 9;
@@ -27,11 +27,18 @@
         background: #0c1a21;
         display: block;
       }
-      #hud { display: flex; align-items: center; gap: 12px; font-size: 13px; margin-top: 10px; flex-wrap: wrap; }
-      #meter { width: 160px; height: 12px; background: #223; border-radius: 6px; overflow: hidden; }
-      #meter > div { height: 100%; width: 0%; background: #6bd06b; }
-      #voiced { width: 12px; height: 12px; border-radius: 50%; background: #444; display: inline-block; }
-      #voiced.on { background: #6bd06b; }
+      .hud { display: flex; align-items: center; gap: 12px; font-size: 13px; margin-top: 10px; flex-wrap: wrap; }
+      .hud.hidden { display: none; }
+      .meter { width: 160px; height: 12px; background: #223; border-radius: 6px; overflow: hidden; }
+      .meter > div { height: 100%; width: 0%; background: #6bd06b; }
+      .dot { width: 12px; height: 12px; border-radius: 50%; background: #444; display: inline-block; }
+      .dot.on { background: #6bd06b; }
+      #preview-wrap { position: relative; width: 160px; height: 90px; border-radius: 8px; overflow: hidden; background: #0c1a21; }
+      #preview, #preview-overlay {
+        position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+        transform: scaleX(-1); /* mirror for the adult; detection uses raw frames */
+      }
+      #preview-overlay { pointer-events: none; }
       #panel {
         flex: 0 1 300px;
         min-width: 260px;
@@ -56,34 +63,65 @@
       button:disabled { opacity: 0.4; cursor: default; }
       select, input[type=range] { width: 100%; }
       .hint { font-size: 12px; opacity: 0.7; line-height: 1.4; }
-      .scene-only { display: none; }
-      .scene-only.visible { display: flex; }
+      .hint.hidden { display: none; }
+      .scene-only, .source-only { display: none; }
+      .scene-only.visible, .source-only.visible { display: flex; }
+      #scene-tabs button { display: none; }
+      #scene-tabs button.visible { display: block; }
     </style>
-    <script type="module" crossorigin src="/chucha-games-spike/assets/index-B-ln9hzT.js"></script>
+    <script type="module" crossorigin src="/chucha-games-spike/assets/index-s3JGBtfQ.js"></script>
   </head>
   <body>
     <div id="stage">
       <canvas id="game" width="960" height="540"></canvas>
-      <div id="hud">
+
+      <div id="hud-voice" class="hud">
         <button id="mic">Включить микрофон</button>
-        <span id="voiced" title="детектор: голос"></span>
-        <div id="meter" title="нормированная громкость"><div id="meter-fill"></div></div>
+        <span id="voiced" class="dot" title="детектор: голос"></span>
+        <div class="meter" title="нормированная громкость"><div id="meter-fill"></div></div>
         <span id="f0"></span>
         <span id="cal" class="hint"></span>
         <span id="source" class="hint">источник: клавиатура</span>
       </div>
-      <p class="hint">
+      <p id="hint-voice" class="hint">
         Без микрофона: удерживайте <b>ПРОБЕЛ</b> — синтетическая «гласная» идёт через тот же анализатор.
         Клавиши <b>1 / 2 / 3</b> — тихо / средне / громко. Ничего не записывается.
+      </p>
+
+      <div id="hud-motion" class="hud hidden">
+        <button id="cam">Включить камеру</button>
+        <div id="preview-wrap">
+          <video id="preview" autoplay playsinline muted></video>
+          <canvas id="preview-overlay" width="160" height="90"></canvas>
+        </div>
+        <div class="meter" title="движение в кадре"><div id="motion-fill"></div></div>
+        <span id="wave-dot" class="dot" title="детектор: взмах"></span>
+        <span id="hand" class="hint"></span>
+        <span id="pose" class="hint"></span>
+        <span id="msource" class="hint">источник: клавиатура</span>
+      </div>
+      <p id="hint-motion" class="hint hidden">
+        Без камеры: стрелки <b>← → ↑ ↓</b> двигают «руку», удерживайте <b>M</b> — движение в этом месте,
+        <b>W</b> — помахать. Камера работает только вживую: кадры анализируются в памяти и отбрасываются,
+        ничего не записывается и не отправляется.
       </p>
     </div>
 
     <div id="panel">
+      <h2>Управление</h2>
+      <div class="tabs" id="source-tabs">
+        <button data-source="voice">Голос</button>
+        <button data-source="motion">Движение</button>
+      </div>
+
       <h2>Игра</h2>
       <div class="tabs" id="scene-tabs">
-        <button data-scene="crossing">Переправа</button>
-        <button data-scene="altitude">Высота</button>
-        <button data-scene="flappy">Флаппи</button>
+        <button data-scene="crossing" data-source="voice">Переправа</button>
+        <button data-scene="altitude" data-source="voice">Высота</button>
+        <button data-scene="flappy" data-source="voice">Флаппи</button>
+        <button data-scene="tsunami" data-source="motion">Волна</button>
+        <button data-scene="waveback" data-source="motion">Помаши</button>
+        <button data-scene="flight" data-source="motion">Полёт</button>
       </div>
       <div class="row">
         <label>Персонаж <select id="skin"></select></label>
@@ -101,9 +139,19 @@
       <div class="row">
         <label><span>Фоновое движение</span><input type="checkbox" id="ambient" checked /></label>
       </div>
-      <div class="row">
+      <div class="row source-only" data-source="voice">
         <label><span>Чувствительность</span><span id="sens-val"></span></label>
         <input type="range" id="sens" min="0" max="100" value="50" />
+      </div>
+      <div class="row source-only" data-source="motion">
+        <label><span>Чувствительность к движению</span><span id="msens-val"></span></label>
+        <input type="range" id="msens" min="0" max="100" value="50" />
+      </div>
+      <div class="row source-only" data-source="motion">
+        <label><span>Модель позы (взмах и высота руки)</span><input type="checkbox" id="pose-on" checked /></label>
+      </div>
+      <div class="row scene-only" data-for="tsunami">
+        <label><span>Звон</span><input type="checkbox" id="chime" checked /></label>
       </div>
       <div class="row scene-only" data-for="crossing">
         <label><span>Время переправы, с</span><span id="cross-val"></span></label>
@@ -113,9 +161,13 @@
         <label><span>Повторять взмах, пока звук длится</span><input type="checkbox" id="hold" /></label>
       </div>
       <button id="reset">Сбросить сцену</button>
-      <p class="hint">
+      <p class="hint" id="panel-hint-voice">
         Экран не подсказывает: пока ребёнок молчит, персонаж стоит. Фоновое движение — постоянное и
         тихое, оно не усиливается в тишине. Звука нет.
+      </p>
+      <p class="hint hidden" id="panel-hint-motion">
+        Экран не подсказывает: пока ребёнок неподвижен, сцена стоит. Фоновое движение — постоянное и
+        тихое, оно не усиливается, пока ребёнок неподвижен. Касания экрана нет.
       </p>
     </div>
   </body>
