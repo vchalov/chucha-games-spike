@@ -53,7 +53,7 @@
       #panel h2 { font-size: 13px; margin: 0; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.06em; }
       .row { display: flex; flex-direction: column; gap: 4px; }
       .row label { display: flex; justify-content: space-between; gap: 8px; }
-      .tabs { display: flex; gap: 6px; }
+      .tabs { display: flex; flex-wrap: wrap; gap: 6px; }
       .tabs button { flex: 1; }
       button {
         font-size: 14px; padding: 7px 12px; border-radius: 8px; border: 0; cursor: pointer;
@@ -69,11 +69,11 @@
       #scene-tabs button { display: none; }
       #scene-tabs button.visible { display: block; }
     </style>
-    <script type="module" crossorigin src="/chucha-games-spike/assets/index-s3JGBtfQ.js"></script>
+    <script type="module" crossorigin src="/chucha-games-spike/assets/index-UcrYgTNS.js"></script>
   </head>
   <body>
     <div id="stage">
-      <canvas id="game" width="960" height="540"></canvas>
+      <canvas id="game" tabindex="0" width="960" height="540"></canvas>
 
       <div id="hud-voice" class="hud">
         <button id="mic">Включить микрофон</button>
@@ -119,6 +119,7 @@
         <button data-scene="crossing" data-source="voice">Переправа</button>
         <button data-scene="altitude" data-source="voice">Высота</button>
         <button data-scene="flappy" data-source="voice">Флаппи</button>
+        <button data-scene="slalom" data-source="voice" class="slalom-text" data-slalom-text="title"></button>
         <button data-scene="tsunami" data-source="motion">Волна</button>
         <button data-scene="waveback" data-source="motion">Помаши</button>
         <button data-scene="flight" data-source="motion">Полёт</button>
@@ -159,6 +160,21 @@
       </div>
       <div class="row scene-only" data-for="flappy">
         <label><span>Повторять взмах, пока звук длится</span><input type="checkbox" id="hold" /></label>
+      </div>
+      <div class="row scene-only" data-for="slalom">
+        <label for="slalom-pattern" class="slalom-text" data-slalom-text="pattern"></label>
+        <select id="slalom-pattern">
+          <option value="even" class="slalom-text" data-slalom-text="even"></option>
+          <option value="pairs" selected class="slalom-text" data-slalom-text="pairs"></option>
+          <option value="longShort" class="slalom-text" data-slalom-text="longShort"></option>
+        </select>
+        <label for="slalom-pace"><span class="slalom-text" data-slalom-text="pace"></span><span id="slalom-pace-val"></span></label>
+        <input type="range" id="slalom-pace" min="0.6" max="2.5" step="0.1" value="1" />
+        <button id="slalom-demo" class="slalom-text" data-slalom-text="demo"></button>
+        <button id="slalom-attempt" class="slalom-text" data-slalom-text="attempt"></button>
+        <label><span class="slalom-text" data-slalom-text="mute"></span><input type="checkbox" id="slalom-mute" /></label>
+        <output id="slalom-status" class="hint" aria-live="polite"></output>
+        <output id="slalom-feedback" class="hint"></output>
       </div>
       <button id="reset">Сбросить сцену</button>
       <p class="hint" id="panel-hint-voice">
